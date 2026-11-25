@@ -108,3 +108,46 @@ the next deploy re-seeds accounts from env and re-copies the sample.
   status icons and row counts; assert the date column only where the browser
   timezone is known.
 - No AI/LLM env is set, so AI features stay off the oracle path.
+
+## Fork and baseline pin
+
+- Canonical fork: `https://github.com/sma-rl-dev/libredb-studio`
+  (`gh repo fork https://github.com/libredb/libredb-studio --org sma-rl-dev --remote=false`;
+  no personal-namespace fork exists).
+- Branch `tester-env-baseline` = upstream tag `1.3.0`
+  (`58adba536f0283fecb7b761053cb2401dd7187eb`) plus one tooling commit that only
+  adds `tester-env`, `docker-compose.tester-env.yml`, `tester-env-seed-data.json`,
+  `tester-env-seed.json` and this file. `gh api
+  repos/sma-rl-dev/libredb-studio/compare/1.3.0...tester-env-baseline` reports
+  ahead 1 / behind 0 and exactly those five file names, so no upstream source,
+  `package.json`, `bun.lock` or Dockerfile is modified and the upstream production
+  Dockerfile remains the build path.
+- Submodule: `apps/libredb-studio` in the corpus, `.gitmodules` URL
+  `https://github.com/sma-rl-dev/libredb-studio.git`, branch
+  `tester-env-baseline`, pinned to the immutable tip commit (never a floating
+  branch).
+- `app_cli` is `tester-env` (submodule-relative). All deployment tooling lives in
+  this fork; nothing was written to a corpus-level `deployment/` directory.
+- Image naming follows the corpus policy: `IMAGE_TAG` is honoured verbatim
+  (default `tester-env-libredb-studio:dev`) and never contains `RUN_ID`, which
+  scopes only the container, compose project and `libredb-studio-data` volume.
+
+## Fork-integration verification (fresh submodule checkout)
+
+Run from `apps/libredb-studio` after the prospect stack was stopped with its own
+CLI (`./tester-env reset` in the prospect checkout, dropping container, volume and
+project network; no raw docker commands):
+
+```bash
+./tester-env deploy   # rebuilt from the fork checkout, healthy in 2 s (cached layers)
+./tester-env seed     # sample 815104 bytes + 3 saved queries + 4 history runs
+./tester-env verify   # passed
+```
+
+`verify` output: `GET /` -> 307 (login redirect), admin login role `admin`,
+`seed:sqlite-embedded-sample` -> `Sample (Employees)` (sqlite), employee table =
+1000 rows, workspace = active connection + 3 saved queries + 4 history runs
+(3 success, 1 error), pinned saved-query results (Development 203 / 9 rows,
+Senior Staff 78955 / 6 rows, Arno Kumaresan 136004 / 10 rows), the seeded failed
+statement replays as `QUERY_ERROR` `no such table: employees`, and the user role
+lists only the LibreDB sample with the admin-only sample hidden.

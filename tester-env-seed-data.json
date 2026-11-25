@@ -1,0 +1,82 @@
+{
+  "_comment": "Deterministic workspace state for the admin account, pushed by './tester-env seed'. Theme: a people-analytics workspace on the built-in 'Sample (Employees)' SQLite database. The three saved queries are verified by './tester-env verify' against the sample, so their row counts are stable. Dates are fixed and absolute; no wall-clock values.",
+  "active_connection_id": "seed:sqlite-embedded-sample",
+  "saved_queries": [
+    {
+      "id": "sq-headcount-by-department",
+      "name": "Headcount by department",
+      "description": "Current headcount per department from the employee sample",
+      "connectionType": "sqlite",
+      "query": "SELECT d.dept_name, COUNT(*) AS headcount\nFROM dept_emp de\nJOIN department d ON d.dept_no = de.dept_no\nWHERE de.to_date = '9999-01-01'\nGROUP BY d.dept_name\nORDER BY headcount DESC, d.dept_name;",
+      "tags": ["headcount", "monthly"],
+      "createdAt": "2026-11-10T09:30:00.000Z",
+      "updatedAt": "2026-11-24T09:12:00.000Z"
+    },
+    {
+      "id": "sq-average-salary-by-title",
+      "name": "Average salary by title",
+      "description": "Average current salary per job title",
+      "connectionType": "sqlite",
+      "query": "SELECT t.title, COUNT(DISTINCT s.emp_no) AS employees, ROUND(AVG(s.amount), 0) AS avg_salary\nFROM salary s\nJOIN title t ON t.emp_no = s.emp_no AND t.to_date = '9999-01-01'\nWHERE s.to_date = '9999-01-01'\nGROUP BY t.title\nORDER BY avg_salary DESC;",
+      "tags": ["payroll"],
+      "createdAt": "2026-11-12T14:05:00.000Z",
+      "updatedAt": "2026-11-20T11:40:00.000Z"
+    },
+    {
+      "id": "sq-top-paid-employees",
+      "name": "Top 10 paid employees",
+      "description": "Highest current salaries with their department, for the pay review",
+      "connectionType": "sqlite",
+      "query": "SELECT e.emp_no, e.first_name || ' ' || e.last_name AS employee, d.dept_name, s.amount AS salary\nFROM employee e\nJOIN salary s ON s.emp_no = e.emp_no AND s.to_date = '9999-01-01'\nJOIN dept_emp de ON de.emp_no = e.emp_no AND de.to_date = '9999-01-01'\nJOIN department d ON d.dept_no = de.dept_no\nORDER BY s.amount DESC\nLIMIT 10;",
+      "tags": ["payroll", "review"],
+      "createdAt": "2026-11-18T16:20:00.000Z",
+      "updatedAt": "2026-11-24T16:05:00.000Z"
+    }
+  ],
+  "history": [
+    {
+      "id": "qh-20261124-160550",
+      "connectionId": "seed:sqlite-embedded-sample",
+      "connectionName": "Sample (Employees)",
+      "tabName": "Pay review",
+      "query": "SELECT e.emp_no, e.first_name || ' ' || e.last_name AS employee, d.dept_name, s.amount AS salary\nFROM employee e\nJOIN salary s ON s.emp_no = e.emp_no AND s.to_date = '9999-01-01'\nJOIN dept_emp de ON de.emp_no = e.emp_no AND de.to_date = '9999-01-01'\nJOIN department d ON d.dept_no = de.dept_no\nORDER BY s.amount DESC\nLIMIT 10;",
+      "executionTime": 15,
+      "status": "success",
+      "rowCount": 10,
+      "executedAt": "2026-11-24T16:05:50.000Z"
+    },
+    {
+      "id": "qh-20261124-091522",
+      "connectionId": "seed:sqlite-embedded-sample",
+      "connectionName": "Sample (Employees)",
+      "tabName": "Ad hoc",
+      "query": "SELECT * FROM employees;",
+      "executionTime": 3,
+      "status": "error",
+      "errorMessage": "no such table: employees",
+      "executedAt": "2026-11-24T09:15:22.000Z"
+    },
+    {
+      "id": "qh-20261124-091403",
+      "connectionId": "seed:sqlite-embedded-sample",
+      "connectionName": "Sample (Employees)",
+      "tabName": "Payroll",
+      "query": "SELECT t.title, COUNT(DISTINCT s.emp_no) AS employees, ROUND(AVG(s.amount), 0) AS avg_salary\nFROM salary s\nJOIN title t ON t.emp_no = s.emp_no AND t.to_date = '9999-01-01'\nWHERE s.to_date = '9999-01-01'\nGROUP BY t.title\nORDER BY avg_salary DESC;",
+      "executionTime": 9,
+      "status": "success",
+      "rowCount": 6,
+      "executedAt": "2026-11-24T09:14:03.000Z"
+    },
+    {
+      "id": "qh-20261124-091241",
+      "connectionId": "seed:sqlite-embedded-sample",
+      "connectionName": "Sample (Employees)",
+      "tabName": "Headcount",
+      "query": "SELECT d.dept_name, COUNT(*) AS headcount\nFROM dept_emp de\nJOIN department d ON d.dept_no = de.dept_no\nWHERE de.to_date = '9999-01-01'\nGROUP BY d.dept_name\nORDER BY headcount DESC, d.dept_name;",
+      "executionTime": 12,
+      "status": "success",
+      "rowCount": 9,
+      "executedAt": "2026-11-24T09:12:41.000Z"
+    }
+  ]
+}

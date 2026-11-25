@@ -1,0 +1,70 @@
+# tester-env compose file for libredb-studio (single web service on port 3000).
+#
+# Built from the checkout with the repo's own production Dockerfile (oven/bun deps
+# stage -> node:26 trixie builder -> standalone runtime); no prebuilt image is used.
+# The tester-env CLI is the supported entry point and supplies IMAGE_TAG,
+# CONTAINER_NAME, COMPOSE_PROJECT_NAME, DATA_VOLUME and PORT. Direct
+# `docker compose -f docker-compose.tester-env.yml up --build` also works with the
+# defaults below (port 13390).
+#
+# Reset gate: all state is one named volume on /app/data (SQLite server store,
+# copied sample database, workflow ledger), so `docker compose down -v` restores an
+# empty first boot that re-seeds the accounts table from env and re-copies the
+# digest-pinned sample.
+
+name: ${COMPOSE_PROJECT_NAME:-tester-env-libredb-studio}
+
+services:
+  app:
+    # Studio's shutdown takes up to 25 s (upstream docs/DISTRIBUTION.md).
+    stop_grace_period: 30s
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_TAG:-tester-env-libredb-studio:dev}
+    container_name: ${CONTAINER_NAME:-tester-env-libredb-studio}
+    environment:
+      # Server-side store instead of the localStorage default, so accounts,
+      # connections and saved queries live in the container and one volume reset
+      # clears them.
+      STORAGE_PROVIDER: sqlite
+      STORAGE_SQLITE_PATH: /app/data/libredb-storage.db
+      # First boot copies these into the accounts table (passwords hashed). Under
+      # sqlite/postgres they only bootstrap; later sign-ins read the table.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@libredb.org}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-test-admin}
+      USER_EMAIL: ${USER_EMAIL:-user@libredb.org}
+      USER_PASSWORD: ${USER_PASSWORD:-test-user}
+      # Short JWT secrets are fatal at boot; this one is fixed so tokens survive
+      # restarts and both roles work without a generated value in the logs.
+      JWT_SECRET: tester-env-libredb-studio-jwt-secret-32ch
+      # Plain-HTTP origin (bridge gateway / host.docker.internal), so the session
+      # cookie must not carry the Secure flag or login silently bounces.
+      AUTH_COOKIE_SECURE: "false"
+      # The image already sets this; restated so the built-in samples are found
+      # even if a wrapper changes the working directory.
+      SEED_ASSETS_DIR: /app/seed-assets
+      TZ: UTC
+    ports:
+      # All interfaces: the browser container reaches it through the bridge
+      # gateway (host.docker.internal), not 127.0.0.1.
+      - "${PORT:-13390}:3000"
+    volumes:
+      - libredb-data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+    restart: "no"
+
+volumes:
+  libredb-data:
+    name: ${DATA_VOLUME:-libredb-studio-data}

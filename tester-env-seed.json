@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "app": "libredb-studio",
+  "seed_profile": "people-analytics-workspace",
+  "theme": "A people-analytics workspace on the built-in HR employee SQLite sample: three saved report queries (headcount, salary by title, top paid employees) and four recent query runs, one of them a failed statement.",
+  "credentials": {
+    "admin": "admin@libredb.org / test-admin (role admin; sees both embedded samples)",
+    "user": "user@libredb.org / test-user (role user; the employee sample is admin-only)"
+  },
+  "seed_command": "./tester-env seed",
+  "verify_command": "./tester-env verify",
+  "stable_counts": {
+    "managed_connections_admin": 2,
+    "managed_connections_user": 1,
+    "employee_rows": 1000,
+    "department_rows": 9,
+    "current_headcount": 802,
+    "saved_queries_admin": 3,
+    "history_admin": 4
+  },
+  "notes": "The employee SQLite sample is copied at boot from the digest-pinned seed-assets/sqlite/employee.db (815104 bytes); seed waits for it and asserts the pinned size. The admin workspace (active connection, saved queries, history) is pushed from tester-env-seed-data.json with PUT /api/storage/<collection>, which replaces each collection: re-running seed is idempotent and removes browser-created leftovers such as the smoke run's saved query. All dates are fixed absolute values; createdAt/updatedAt/executedAt are never derived from the clock. The UI filters the Saved panel by the active connection's type and the History panel by the active connection's id, so both lists are visible on login only because the seed also pins active_connection_id to the employees sample.",
+  "requirements": {
+    "admin-login": {
+      "status": "present",
+      "evidence": "First boot seeds admin@libredb.org / test-admin (role admin) and user@libredb.org / test-user (role user) from env into the server-side SQLite account store; reset drops the volume so the same two accounts come back."
+    },
+    "employee-database": {
+      "status": "present",
+      "evidence": "Sample (Employees) is 'seed:sqlite-embedded-sample', type sqlite, copied at boot to /app/data/sample-employees.db at exactly 815104 bytes (the pinned asset). Tables: employee 1000, department 9, dept_emp 1103, dept_manager 16, salary 9488, title 1470; 802 current employees (dept_emp.to_date = '9999-01-01')."
+    },
+    "connection-visibility-by-role": {
+      "status": "present",
+      "evidence": "GET /api/connections/managed lists 2 connections for admin: 'Sample (Employees)' (sqlite, roles admin) and 'Sample (LibreDB)' (libredb, roles *). The user role gets only 'Sample (LibreDB)'; the employee sample is hidden and verify fails if it appears."
+    },
+    "schema-inspection-target": {
+      "status": "present",
+      "evidence": "The employees sample exposes 6 related tables (department, dept_emp, dept_manager, employee, salary, title) with foreign keys, enough for the object tree, joins, grouping, sorting and aggregation assertions without any external database."
+    },
+    "saved-queries": {
+      "status": "present",
+      "evidence": "Exactly 3 saved queries for admin, all connectionType 'sqlite': sq-headcount-by-department 'Headcount by department', sq-average-salary-by-title 'Average salary by title', sq-top-paid-employees 'Top 10 paid employees'. Fixed tags (headcount/monthly, payroll, payroll/review) and fixed updatedAt 2026-11-24, 2026-11-20, 2026-11-24."
+    },
+    "saved-query-results": {
+      "status": "present",
+      "evidence": "Running each saved query through /api/db/query returns the pinned rows: headcount by department 9 rows (Development 203 first, Marketing 34 last, 802 total); average salary by title 6 rows (Senior Staff 78955 first, Assistant Engineer 59965 last); top 10 paid employees 10 rows (first Arno Kumaresan, Sales, 136004; last Charlene Brattka, Sales, 113229)."
+    },
+    "query-history-with-failure": {
+      "status": "present",
+      "evidence": "Exactly 4 history runs for admin, all on 'Sample (Employees)': 3 success (9, 6 and 10 rows on tabs Headcount, Payroll, Pay review) and 1 error (tab Ad hoc, 'SELECT * FROM employees;', errorMessage 'no such table: employees'), so the History status filter, row-count sort and error rendering all have data. Fixed executedAt values 2026-11-24T09:12:41Z .. 2026-11-24T16:05:50Z."
+    },
+    "active-connection-pinned": {
+      "status": "present",
+      "evidence": "active_connection_id is 'seed:sqlite-embedded-sample', so the SQL IDE opens on the employee database and the Saved/History panels are populated on first load instead of showing empty states."
+    },
+    "saved-query-search": {
+      "status": "present",
+      "evidence": "Distinct names and SQL text: searching 'salary' matches 'Average salary by title' and 'Top 10 paid employees' (both contain salary in the SQL), 'headcount' matches only 'Headcount by department'; the seeded queries also carry the tags payroll and headcount."
+    },
+    "empty-state-for-lower-role": {
+      "status": "present",
+      "evidence": "The user role gets its own storage namespace, so its Saved and History panels start empty while the employee sample is hidden: a real empty state next to the populated admin workspace."
+    },
+    "baseline-without-smoke-artifacts": {
+      "status": "present",
+      "evidence": "seed replaces the saved_queries and history collections wholesale, so the smoke run's leftover 'Employee count smoke' query is removed; verify fails unless exactly the 3 seeded queries and 4 history runs exist."
+    }
+  }
+}
